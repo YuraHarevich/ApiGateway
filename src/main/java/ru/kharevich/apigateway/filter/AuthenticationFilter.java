@@ -22,7 +22,8 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     private final List<String> openApiEndpoints = List.of(
             "api/v1/auth/sign-in",
             "api/v1/auth/sign-up",
-            "api/v1/auth/refresh"
+            "api/v1/auth/refresh",
+            "/api/v1/auth/validate"
     );
 
     private final WebClient.Builder webClientBuilder;
@@ -41,6 +42,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             if (openApiEndpoints.contains(path)) {
                 return chain.filter(exchange);
             }
+            System.out.println("---------Method----------:" + exchange.getRequest().getMethod());
 
             if (!exchange.getRequest().getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
                 return onError(exchange, HttpStatus.UNAUTHORIZED);
