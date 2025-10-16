@@ -1,6 +1,5 @@
 package ru.kharevich.apigateway.filter;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpHeaders;
@@ -15,16 +14,16 @@ import ru.kharevich.apigateway.properties.ServiceProperties;
 
 import java.util.List;
 
+import static ru.kharevich.apigateway.properties.ConstantAuthValues.AUTHORIZATION_PREFIX;
+import static ru.kharevich.apigateway.properties.ConstantAuthValues.AUTHORIZATION_USER_ID_PREFIX;
+import static ru.kharevich.apigateway.properties.ConstantAuthValues.AUTHORIZATION_USER_ROLE_PREFIX;
+import static ru.kharevich.apigateway.properties.ConstantAuthValues.OPEN_API_ENDPOINTS;
+
 public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
 
     private final ServiceProperties serviceProperties;
 
-    private final List<String> openApiEndpoints = List.of(
-            "api/v1/auth/sign-in",
-            "api/v1/auth/sign-up",
-            "api/v1/auth/refresh",
-            "/api/v1/auth/validate"
-    );
+    private final List<String> openApiEndpoints = OPEN_API_ENDPOINTS;
 
     private final WebClient.Builder webClientBuilder;
 
@@ -42,14 +41,12 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             if (openApiEndpoints.contains(path)) {
                 return chain.filter(exchange);
             }
-            System.out.println("---------Method----------:" + exchange.getRequest().getMethod());
-
             if (!exchange.getRequest().getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
                 return onError(exchange, HttpStatus.UNAUTHORIZED);
             }
 
             String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            if (authHeader == null || !authHeader.startsWith(AUTHORIZATION_PREFIX)) {
                 return onError(exchange, HttpStatus.UNAUTHORIZED);
             }
             String token = authHeader.substring(7);
@@ -63,8 +60,8 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     .bodyToMono(UserInfo.class)
                     .flatMap(userInfo -> {
                         exchange.getRequest().mutate()
-                                .header("X-User-Id", userInfo.id())
-                                .header("X-User-Roles", String.join(",", userInfo.roles()));
+                                .header(AUTHORIZATION_USER_ID_PREFIX, userInfo.id())
+                                .header(AUTHORIZATION_USER_ROLE_PREFIX, String.join(",", userInfo.roles()));
                         return chain.filter(exchange);
                     })
                     .onErrorResume(e -> {
